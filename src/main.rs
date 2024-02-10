@@ -1,4 +1,6 @@
 use actix_web::{web, App, HttpServer};
+use log4rs;
+use log::debug;
 
 mod config;
 mod user;
@@ -11,9 +13,14 @@ use std::sync::Arc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
+    // Inicialitza el sistema de logs
+    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+
     // Estableix la connexió a la base de dades
     let pool = connect_to_db().await.expect("Failed to connect to DB");
     let user_repository = Arc::new(UserRepository::new(pool).await);
+    debug!("UserRepository created");
 
     // Configura el servidor Actix-web
     HttpServer::new(move || {

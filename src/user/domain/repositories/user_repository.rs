@@ -1,6 +1,7 @@
 use sqlx::sqlite::SqlitePool;
 use crate::user::domain::models::user::User;
 use crate::user::application::dtos::user_dto::UserDto;
+use log::info;
 
 pub struct UserRepository {
     db_pool: SqlitePool,
@@ -8,6 +9,7 @@ pub struct UserRepository {
 
 impl UserRepository {
     pub async fn new(db_pool: SqlitePool) -> Self {
+        info!("Creating UserRepository");
         UserRepository { db_pool }
     }
 
@@ -28,6 +30,7 @@ impl UserRepository {
     }
 
     pub async fn get_users(&self) -> Result<Vec<UserDto>, sqlx::Error> {
+        log::info!("Getting users");
         let users = sqlx::query_as::<_, User>("SELECT * FROM users")
             .fetch_all(&self.db_pool)
             .await?;
