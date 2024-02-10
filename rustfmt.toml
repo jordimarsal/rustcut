@@ -1,5 +1,6 @@
-
 max_width = 120
 tab_spaces = 4
 fn_params_layout = "Compressed"
+# el·legeix: https://rust-lang.github.io/rustfmt/
 # find . -name "*.rs" -exec rustfmt --edition 2021 --verbose {} \;
+# cargo fmt --all
