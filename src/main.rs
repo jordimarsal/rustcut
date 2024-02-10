@@ -1,6 +1,6 @@
 use actix_web::{web, App, HttpServer};
-use log4rs;
 use log::debug;
+use log4rs;
 
 mod config;
 mod user;
@@ -10,10 +10,8 @@ use crate::user::application::controllers::user_controller::{create_user, get_us
 use crate::user::domain::repositories::user_repository::UserRepository;
 use std::sync::Arc;
 
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-
     // Inicialitza el sistema de logs
     log4rs::init_file("log4rs.yml", Default::default()).unwrap();
 
