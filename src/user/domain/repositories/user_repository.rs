@@ -1,4 +1,4 @@
-use crate::user::application::dtos::user_dto::UserDto;
+use crate::user::application::dtos::user_dto::{UserDto, UserDtoCreate, UserDtoCreateResponse};
 use crate::user::domain::models::user::User;
 use log::info;
 use sqlx::sqlite::SqlitePool;
@@ -13,17 +13,17 @@ impl UserRepository {
         UserRepository { db_pool }
     }
 
-    pub async fn create_user(&self, user_dto: UserDto) -> Result<UserDto, sqlx::Error> {
-        let user = sqlx::query_as::<_, User>("INSERT INTO users (username, email) VALUES ($1, $2) RETURNING *")
+    pub async fn create_user(&self, user_dto: UserDtoCreate, api_key: String) -> Result<UserDtoCreateResponse, sqlx::Error> {
+        let user = sqlx::query_as::<_, User>("INSERT INTO users (username, email, api_key) VALUES ($1, $2, $3) RETURNING *")
             .bind(&user_dto.username)
             .bind(&user_dto.email)
+            .bind(api_key.clone())
             .fetch_one(&self.db_pool)
             .await?;
 
-        Ok(UserDto {
-            id: user.id,
-            username: user.username,
-            email: user.email,
+        Ok(UserDtoCreateResponse {
+            user: user_dto,
+            api_key: api_key,
         })
     }
 
@@ -41,5 +41,14 @@ impl UserRepository {
                 email: user.email,
             })
             .collect())
+    }
+
+    pub async fn delete_user(&self, id: i32) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(id)
+            .execute(&self.db_pool)
+            .await?;
+
+        Ok(())
     }
 }

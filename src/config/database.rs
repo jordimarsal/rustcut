@@ -15,7 +15,8 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
-            email TEXT NOT NULL
+            email TEXT NOT NULL,
+            api_key TEXT NOT NULL
         );
         "#,
     )
@@ -51,16 +52,16 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
 
 pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error> {
     let users = vec![
-        ("JordiM", "marcaljordi@google.com"),
-        ("Pepet", "pepet@example.com"),
+        ("JordiM", "marcaljordi@google.com", "1234567890"),
+        ("Pepet", "pepet@example.com", "0987654321"),
         // Afegir més usuaris aquí
     ];
 
-    for (username, email) in users {
+    for (username, email, api_key) in users {
         sqlx::query(
             r#"
-            INSERT INTO users (username, email)
-            SELECT ?1, ?2
+            INSERT INTO users (username, email, api_key)
+            SELECT ?1, ?2, ?3
             WHERE NOT EXISTS (
                 SELECT 1 FROM users WHERE username = ?1 OR email = ?2
             );
@@ -68,12 +69,13 @@ pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error
         )
         .bind(username)
         .bind(email)
+        .bind(api_key)
         .execute(&**db_pool)
         .await?;
     }
 
     let urls = vec![
-        ("ERW8S", "ERW8S_BD6EZEUN	", "http://www.jordimp.net/", true, 0, 1)
+        ("ERW8S", "ERW8S_BD6EZEUN", "http://www.jordimp.net/", true, 0, 1)
         // Afegir més URLs aquí
     ];
     for (key, secret_key, target_url, is_active, clicks, user_id) in urls {

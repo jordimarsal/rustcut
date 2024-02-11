@@ -6,3 +6,15 @@ pub struct UserDto {
     pub username: String,
     pub email: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserDtoCreate {
+    pub username: String,
+    pub email: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserDtoCreateResponse {
+    pub user: UserDtoCreate,
+    pub api_key: String,
+}

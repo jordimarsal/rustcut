@@ -3,10 +3,11 @@ use log::debug;
 use log4rs;
 
 mod config;
+mod shared;
 mod user;
 
 use crate::config::database::connect_to_db;
-use crate::user::application::controllers::user_controller::{create_user, get_users};
+use crate::user::application::controllers::user_controller::{create_user, get_users, delete_user};
 use crate::user::domain::repositories::user_repository::UserRepository;
 use crate::user::domain::services::user_service::UserService;
 
@@ -32,6 +33,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(Arc::new(user_service.clone())))
             .service(create_user)
             .service(get_users)
+            .service(delete_user)
     })
     .bind("127.0.0.1:8083")?
     .run()
