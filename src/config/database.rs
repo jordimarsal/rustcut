@@ -22,6 +22,25 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
     .execute(&pool)
     .await?;
 
+    // Crea la taula URL
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS urls (
+            id INTEGER PRIMARY KEY,
+            key TEXT NOT NULL,
+            secret_key TEXT NOT NULL,
+            target_url TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL,
+            clicks INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_id ON urls (user_id);
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
     // Sembrar la base de dades amb dades inicials
     seed_data(web::Data::new(pool.clone()))
         .await
@@ -32,8 +51,8 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
 
 pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error> {
     let users = vec![
-        ("JohnDoe", "john.doe@example.com"),
-        ("JaneDoe", "jane.doe@example.com"),
+        ("JordiM", "marcaljordi@google.com"),
+        ("Pepet", "pepet@example.com"),
         // Afegir més usuaris aquí
     ];
 
@@ -53,11 +72,29 @@ pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error
         .await?;
     }
 
-    // sqlx::query("INSERT INTO users (username, email) VALUES (?, ?)")
-    //     .bind("JohnDoe")
-    //     .bind("john.doe@example.com")
-    //     .execute(&**db_pool)
-    //     .await?;
+    let urls = vec![
+        ("ERW8S", "ERW8S_BD6EZEUN	", "http://www.jordimp.net/", true, 0, 1)
+        // Afegir més URLs aquí
+    ];
+    for (key, secret_key, target_url, is_active, clicks, user_id) in urls {
+        sqlx::query(
+            r#"
+            INSERT INTO urls (key, secret_key, target_url, is_active, clicks, user_id)
+            SELECT ?1, ?2, ?3, ?4, ?5, ?6
+            WHERE NOT EXISTS (
+                SELECT 1 FROM urls WHERE key = ?1 OR secret_key = ?2
+            );
+            "#,
+        )
+        .bind(key)
+        .bind(secret_key)
+        .bind(target_url)
+        .bind(is_active)
+        .bind(clicks)
+        .bind(user_id)
+        .execute(&**db_pool)
+        .await?;
+    }
 
     Ok(())
 }

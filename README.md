@@ -1,5 +1,5 @@
 # rustcut
-A tiny Rust shortener with Actix-web and SQLite
+A tiny Rust URL shortener with Actix-Web and SQLite
 
 
 ## Local test
