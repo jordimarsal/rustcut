@@ -1,6 +1,6 @@
-use crate::user::application::dtos::user_dto::{UserDto, UserDtoCreateResponse, UserDtoCreate};
-use crate::user::domain::repositories::user_repository::UserRepository;
 use crate::shared::utils::create_api_key;
+use crate::user::application::dtos::user_dto::{UserDto, UserDtoCreate, UserDtoCreateResponse};
+use crate::user::domain::repositories::user_repository::UserRepository;
 use sqlx::Error;
 use std::sync::Arc;
 

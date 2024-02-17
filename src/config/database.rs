@@ -2,6 +2,8 @@ use actix_web::web;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::sqlite::SqlitePool;
 
+use crate::shared::utils::create_random_key;
+
 pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
     let options = SqliteConnectOptions::new()
         .filename("./sqlite:database.db")
@@ -42,6 +44,23 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
     .execute(&pool)
     .await?;
 
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS generated_keys (
+            key_value TEXT PRIMARY KEY
+        );
+        CREATE TABLE IF NOT EXISTS used_keys (
+            id INTEGER PRIMARY KEY,
+            key_value VARCHAR(50),
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_used_keys_key_value ON used_keys (key_value);
+        "#,
+    )
+    .execute(&pool)
+    .await?;
+
     // Sembrar la base de dades amb dades inicials
     seed_data(web::Data::new(pool.clone()))
         .await
@@ -75,8 +94,7 @@ pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error
     }
 
     let urls = vec![
-        ("ERW8S", "ERW8S_BD6EZEUN", "http://www.jordimp.net/", true, 0, 1)
-        // Afegir més URLs aquí
+        ("ERW8S", "ERW8S_BD6EZEUN", "http://www.jordimp.net/", true, 0, 1), // Afegir més URLs aquí
     ];
     for (key, secret_key, target_url, is_active, clicks, user_id) in urls {
         sqlx::query(
@@ -98,5 +116,30 @@ pub async fn seed_data(db_pool: web::Data<SqlitePool>) -> Result<(), sqlx::Error
         .await?;
     }
 
+    let keys = generate_keys();
+
+    for key_value in keys {
+        sqlx::query(
+            r#"
+            INSERT INTO generated_keys (key_value)
+            SELECT ?1
+            WHERE
+                (SELECT COUNT(*) FROM generated_keys) < 10
+            ;
+            "#,
+        )
+        .bind(key_value)
+        .execute(&**db_pool)
+        .await?;
+    }
+
     Ok(())
+}
+
+fn generate_keys() -> Vec<String> {
+    let mut keys = vec![];
+    for _ in 0..10 {
+        keys.push(create_random_key(8));
+    }
+    keys
 }

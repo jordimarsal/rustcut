@@ -13,13 +13,16 @@ impl UserRepository {
         UserRepository { db_pool }
     }
 
-    pub async fn create_user(&self, user_dto: UserDtoCreate, api_key: String) -> Result<UserDtoCreateResponse, sqlx::Error> {
-        let user = sqlx::query_as::<_, User>("INSERT INTO users (username, email, api_key) VALUES ($1, $2, $3) RETURNING *")
-            .bind(&user_dto.username)
-            .bind(&user_dto.email)
-            .bind(api_key.clone())
-            .fetch_one(&self.db_pool)
-            .await?;
+    pub async fn create_user(
+        &self, user_dto: UserDtoCreate, api_key: String,
+    ) -> Result<UserDtoCreateResponse, sqlx::Error> {
+        let _user =
+            sqlx::query_as::<_, User>("INSERT INTO users (username, email, api_key) VALUES ($1, $2, $3) RETURNING *")
+                .bind(&user_dto.username)
+                .bind(&user_dto.email)
+                .bind(api_key.clone())
+                .fetch_one(&self.db_pool)
+                .await?;
 
         Ok(UserDtoCreateResponse {
             user: user_dto,
