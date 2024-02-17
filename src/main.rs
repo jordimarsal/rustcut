@@ -1,5 +1,5 @@
 use actix_web::{web, App, HttpServer};
-use log::debug;
+use log::info;
 use log4rs;
 
 mod config;
@@ -27,26 +27,29 @@ async fn main() -> std::io::Result<()> {
 
     // Carrega les variables d'entorn i els arguments de la línia de comandes
     let config = AppConfig::from_env_and_args();
-    let server_port = config.server_port;
-    let base_url = config.base_url;
+    let server_port = config.server_port.clone();
+    let base_url = config.base_url.clone();
+    let protocol = config.protocol.clone();
 
     // Estableix la connexió a la base de dades
     let pool = connect_to_db().await.expect("Failed to connect to DB");
 
     let user_repository = Arc::new(UserRepository::new(pool.clone()).await);
-    debug!("UserRepository created");
 
     // Crear una nova instància de UserService amb UserRepository
     let user_service = UserService::new(user_repository.clone());
 
-    let url_repository = Arc::new(URLRepository::new(pool.clone()).await);
+    let url_repository = Arc::new(URLRepository::new(pool.clone(), config.clone()).await);
     let url_service = URLService::new(url_repository.clone());
+
+    info!("Server up in {protocol}://{base_url}:{server_port}");
 
     // Configura el servidor Actix-web
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(Arc::new(user_service.clone())))
             .app_data(web::Data::new(Arc::new(url_service.clone())))
+            .app_data(config.clone())
             .service(create_user)
             .service(get_users)
             .service(delete_user)

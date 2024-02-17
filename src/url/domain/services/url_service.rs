@@ -1,6 +1,7 @@
-use crate::url::application::dtos::url_dto::{URLBaseDto, URLInfoDto};
+use crate::url::application::dtos::url_dto::{CustomError, URLBaseDto, URLInfoDto};
 use crate::url::domain::repositories::url_repository::URLRepository;
 
+use log::debug;
 use sqlx::Error;
 use std::sync::Arc;
 
@@ -15,7 +16,10 @@ impl URLService {
     }
 
     pub async fn create_url(&self, url_base: URLBaseDto) -> Result<URLInfoDto, Error> {
-        let user_id = 1;
+        debug!("Creating URL");
+        let user_id = self.url_repository.get_user_by_apy_key(url_base.api_key.clone()).await
+        .map_err(|_| CustomError::new(400, "No valid API_KEY"))?;
+        debug!("User id: {}", user_id);
         self.url_repository.create_url(url_base.target_url, user_id).await
     }
 

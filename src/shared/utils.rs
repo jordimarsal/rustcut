@@ -12,17 +12,16 @@ pub fn create_api_key() -> String {
     api_key
 }
 
-pub fn create_unique_random_key() -> String {
-    let mut rng = rand::thread_rng();
-    let key: u64 = rng.gen();
-    key.to_string()
+pub fn create_random_key(length: usize) -> String {
+    let key1 = generate_key_part(length);
+    let key2 = generate_key_part(length);
+    format!("{}_{}", key1, key2)
 }
 
-pub fn create_random_key(length: usize) -> String {
-    let mut rng = rand::thread_rng();
-    let key: String = iter::repeat(())
-        .map(|()| rng.sample(Alphanumeric) as char) // Convert u8 to char
+fn generate_key_part(length: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
         .take(length)
-        .collect();
-    key
+        .map(char::from)
+        .collect()
 }

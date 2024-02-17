@@ -1,6 +1,5 @@
 use crate::user::application::dtos::user_dto::{UserDto, UserDtoCreate, UserDtoCreateResponse};
 use crate::user::domain::models::user::User;
-use log::info;
 use sqlx::sqlite::SqlitePool;
 
 pub struct UserRepository {
@@ -9,7 +8,6 @@ pub struct UserRepository {
 
 impl UserRepository {
     pub async fn new(db_pool: SqlitePool) -> Self {
-        info!("Creating UserRepository");
         UserRepository { db_pool }
     }
 
