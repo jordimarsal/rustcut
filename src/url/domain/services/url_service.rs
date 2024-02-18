@@ -15,12 +15,26 @@ impl URLService {
         Self { url_repository }
     }
 
-    pub async fn create_url(&self, url_base: URLBaseDto) -> Result<URLInfoDto, Error> {
+    pub async fn create_url(&self, url_base: URLBaseDto) -> Result<URLInfoDto, CustomError> {
         debug!("Creating URL");
-        let user_id = self.url_repository.get_user_by_apy_key(url_base.api_key.clone()).await
-        .map_err(|_| CustomError::new(400, "No valid API_KEY"))?;
+        let user_id = self
+            .url_repository
+            .get_user_by_apy_key(url_base.api_key.clone())
+            .await
+            .map_err(|_| CustomError::new(400, "No valid API_KEY"))?;
         debug!("User id: {}", user_id);
-        self.url_repository.create_url(url_base.target_url, user_id).await
+        let result = self
+            .url_repository
+            .create_url(url_base.target_url, user_id)
+            .await
+            .map_err(|err| {
+                eprintln!("Error occurred[create_url_srvc]: {}", err);
+                CustomError::new(500, "Error creating URL")
+            });
+        match result {
+            Ok(url) => Ok(url),
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn forward_to_target_url(&self, url_key: String) -> Result<String, Error> {

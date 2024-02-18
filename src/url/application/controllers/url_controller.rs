@@ -13,7 +13,7 @@ pub async fn create_url(
     debug!("Creating URL");
     match url_service.create_url(url_base_dto.into_inner()).await {
         Ok(url_response) => HttpResponse::Ok().json(url_response),
-        Err(_) => HttpResponse::InternalServerError().finish(),
+        Err(e) => HttpResponse::InternalServerError().json(e),
     }
 }
 

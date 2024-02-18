@@ -3,7 +3,6 @@ use crate::url::application::dtos::url_dto::{CustomError, URLInfoDto};
 use crate::url::application::mappers::mappers::map_url_to_dto;
 use crate::url::domain::models::schema::{GeneratedKey, URL};
 use log::debug;
-use sqlx::error::DatabaseError;
 use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
 
@@ -107,7 +106,7 @@ impl URLRepository {
         Ok(result.target_url)
     }
 
-    pub async fn get_user_by_apy_key(&self, api_key: String) -> Result<i32, CustomError> {
+    pub async fn get_user_by_apy_key(&self, api_key: String) -> Result<i32, ()> {
         let result_api_key = sqlx::query(
             "
             SELECT id FROM users
@@ -118,32 +117,13 @@ impl URLRepository {
         .bind(api_key)
         .fetch_one(&self.db_pool)
         .await
-        // .map_err(|err| {
-        //     eprintln!("Error occurred[get_generated_key]: {}", err);
-        //     err
-        // })?;
-        //.map_err(|error| CustomError::from_database_error(URLRepository::boxed_error(error.as_database_error().clone()), "No valid API_KEY"))?;
-        .map_err(|error| CustomError::new(400, "No valid API_KEY"))?;
-
+        .map_err(|err| {
+            eprintln!("Error occurred[result_api_key]: {}", err);
+            CustomError::new(400, "No valid API_KEY");
+        })?;
 
         Ok(result_api_key.get("id"))
     }
-
-    // pub fn boxed_error(error: Option<&dyn DatabaseError>) -> Box<dyn DatabaseError> {
-    //     match error {
-    //         Some(error) => Box::new(error),
-    //         None => Box::new(CustomError::new(0, "No error"))
-    //     }
-    // }
-
-    // pub fn from_database_error(error: Option<&dyn DatabaseError>, message: &str) -> CustomError {
-    //     let mut error_ref: &dyn DatabaseError = error.unwrap();
-    //     let n_error: &mut dyn DatabaseError = &mut *error_ref;
-    //     CustomError::DatabaseError {
-    //         source: n_error,
-    //         message: message.to_string(),
-    //     }
-    // }
 
     pub async fn increment_clicks(&self, url_key: String) -> sqlx::Result<()> {
         let mut url = sqlx::query_as::<_, URL>("SELECT * FROM urls WHERE key = $1")
