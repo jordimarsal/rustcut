@@ -18,19 +18,19 @@ impl URLRepository {
 
     pub async fn create_url(&self, target_url: String, user_id: i32) -> Result<URLInfoDto, sqlx::Error> {
         debug!("Creating URL");
+        // checks if the user has the same url
+        let url = self.get_db_url_by_user_and_target_url(user_id, target_url.clone()).await;
+        if url.is_ok() {
+            let db_url = url.unwrap();
+            debug!("URL already exists: {:?}", db_url);
+            return Ok(map_url_to_dto(&db_url, self.config.clone()));
+        }
         let secret_key = &self.get_generated_key().await?;
         debug!("Secret key: {}", secret_key.clone());
         // secret_key es de la forma "key_1234"
         // key es la part de l'esquerra de la cadena
         let key = secret_key.split('_').collect::<Vec<&str>>()[0];
-        let db_url = URL {
-            target_url: target_url.clone(),
-            key: key.to_string(),
-            secret_key: secret_key.clone(),
-            is_active: true,
-            clicks: 0,
-            user_id,
-        };
+        let db_url = get_response_url(target_url, key, secret_key, user_id);
         let result_insert = sqlx::query_as::<_, URL>(
             "INSERT INTO urls (key, secret_key, target_url, is_active, clicks, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
         )
@@ -106,6 +106,21 @@ impl URLRepository {
         Ok(result.target_url)
     }
 
+    pub async fn get_db_url_by_user_and_target_url(&self, user_id: i32, target_url: String) -> Result<URL, sqlx::Error> {
+        let result = sqlx::query_as::<_, URL>(
+            "
+            SELECT * FROM urls
+            WHERE user_id = $1 AND target_url = $2
+            LIMIT 1
+            ",
+        )
+        .bind(user_id)
+        .bind(target_url)
+        .fetch_one(&self.db_pool)
+        .await?;
+        Ok(result)
+    }
+
     pub async fn get_user_by_apy_key(&self, api_key: String) -> Result<i32, ()> {
         let result_api_key = sqlx::query(
             "
@@ -139,4 +154,16 @@ impl URLRepository {
 
         Ok(())
     }
+}
+
+fn get_response_url(target_url: String, key: &str, secret_key: &String, user_id: i32) -> URL {
+    let db_url = URL {
+        target_url: target_url.clone(),
+        key: key.to_string(),
+        secret_key: secret_key.clone(),
+        is_active: true,
+        clicks: 0,
+        user_id,
+    };
+    db_url
 }
