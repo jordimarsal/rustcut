@@ -3,14 +3,22 @@ A tiny Rust URL shortener with Actix-Web and SQLite
 
 
 ## Local test
-User GET:<br>
+#### User GET:<br>
+```sh
 curl -X GET http://localhost:8083/users
+```
 
-User POST:<br>
+#### User POST:<br>
+```sh
 curl -X POST -H "Content-Type: application/json" -d '{"username":"example", "email":"example@mail.com"}' http://localhost:8083/users
+```
 
-User DELETE:<br>
+#### User DELETE:<br>
+```sh
 curl -X DELETE http://localhost:8083/users/3
+```
 
-URL create POST<br>
+#### URL create POST<br>
+```sh
 curl -X POST -H "Content-Type: application/json" -d '{"api_key":"1234567890", "target_url":"https://github.com/jordimarsal/rustcut"}' http://localhost:8083/url
+```
