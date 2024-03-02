@@ -22,3 +22,10 @@ curl -X DELETE http://localhost:8083/users/3
 ```sh
 curl -X POST -H "Content-Type: application/json" -d '{"api_key":"1234567890", "target_url":"https://github.com/jordimarsal/rustcut"}' http://localhost:8083/url
 ```
+
+#### URL redirect GET<br>
+_Must be used from web browser. Url key must be some obtained from URL create POST_
+```sh
+curl -X GET \
+http://localhost:8083/4gefwf31
+```
