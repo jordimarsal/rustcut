@@ -1,4 +1,4 @@
-use actix_web::{delete, get, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, web, HttpResponse, Responder, http};
 
 use crate::url::application::dtos::url_dto::URLBaseDto;
 use crate::url::domain::services::url_service::URLService;
@@ -18,15 +18,20 @@ pub async fn create_url(
 }
 
 #[get("/{url_key}")]
-pub async fn forward_to_target_url(url_key: String, url_service: web::Data<Arc<URLService>>) -> impl Responder {
-    match url_service.forward_to_target_url(url_key).await {
-        Ok(users_dto) => HttpResponse::Ok().json(users_dto),
+pub async fn forward_to_target_url(url_key: web::Path<String>, url_service: web::Data<Arc<URLService>>) -> impl Responder {
+    debug!("controller Forwarding to target URL: {}", url_key.clone());
+    match url_service.forward_to_target_url(url_key.into_inner()).await {
+        //Ok(target_url) => HttpResponse::Ok().json(target_url),
+        Ok(target_url) => HttpResponse::SeeOther()
+        .append_header((http::header::LOCATION, target_url))
+            .finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
 
 #[get("/admin/{secret_key}")]
 pub async fn get_url_info(url_key: String, url_service: web::Data<Arc<URLService>>) -> impl Responder {
+    debug!("Getting URL info");
     match url_service.get_url_info(url_key).await {
         Ok(users_dto) => HttpResponse::Ok().json(users_dto),
         Err(_) => HttpResponse::InternalServerError().finish(),

@@ -38,8 +38,9 @@ impl URLService {
     }
 
     pub async fn forward_to_target_url(&self, url_key: String) -> Result<String, Error> {
-        let target_url = self.url_repository.get_db_url_by_key(url_key).await?;
-        let _ = self.url_repository.increment_clicks(target_url.clone()).await?;
+        let target_url = self.url_repository.get_db_url_by_key(url_key.clone()).await?;
+        debug!("Forwarding to target URL: {}", target_url.clone());
+        let _ = self.url_repository.increment_clicks(url_key.clone()).await?;
         Ok(target_url)
     }
 

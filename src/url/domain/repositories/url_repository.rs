@@ -19,7 +19,9 @@ impl URLRepository {
     pub async fn create_url(&self, target_url: String, user_id: i32) -> Result<URLInfoDto, sqlx::Error> {
         debug!("Creating URL");
         // checks if the user has the same url
-        let url = self.get_db_url_by_user_and_target_url(user_id, target_url.clone()).await;
+        let url = self
+            .get_db_url_by_user_and_target_url(user_id, target_url.clone())
+            .await;
         if url.is_ok() {
             let db_url = url.unwrap();
             debug!("URL already exists: {:?}", db_url);
@@ -106,7 +108,9 @@ impl URLRepository {
         Ok(result.target_url)
     }
 
-    pub async fn get_db_url_by_user_and_target_url(&self, user_id: i32, target_url: String) -> Result<URL, sqlx::Error> {
+    pub async fn get_db_url_by_user_and_target_url(
+        &self, user_id: i32, target_url: String,
+    ) -> Result<URL, sqlx::Error> {
         let result = sqlx::query_as::<_, URL>(
             "
             SELECT * FROM urls
@@ -146,7 +150,7 @@ impl URLRepository {
             .fetch_one(&self.db_pool)
             .await?;
         url.clicks += 1;
-        sqlx::query("UPDATE urls SET clicks = $1 WHERE url_key = $2")
+        sqlx::query("UPDATE urls SET clicks = $1 WHERE key = $2")
             .bind(url.clicks)
             .bind(url_key)
             .execute(&self.db_pool)
