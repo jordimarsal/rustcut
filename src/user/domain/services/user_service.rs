@@ -53,8 +53,14 @@ mod tests {
     #[async_trait]
     impl crate::user::domain::repositories::user_repository_port::UserRepositoryPort for FakeUserRepo {
         async fn create_user(&self, user_dto: UserDtoCreate, _api_key: String) -> Result<crate::user::application::dtos::user_dto::UserDtoCreateResponse, Error> {
-            let mut users = self.users.lock().unwrap();
-            let mut id = self.next_id.lock().unwrap();
+            let mut users = match self.users.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            let mut id = match self.next_id.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             let user = UserDto { id: *id, username: user_dto.username.clone(), email: user_dto.email.clone() };
             *id += 1;
             users.push(user);
@@ -63,32 +69,41 @@ mod tests {
         }
 
         async fn get_users(&self) -> Result<Vec<UserDto>, Error> {
-            let users = self.users.lock().unwrap();
+            let users = match self.users.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             Ok(users.clone())
         }
 
         async fn delete_user(&self, id: i32) -> Result<(), Error> {
-            let mut users = self.users.lock().unwrap();
+            let mut users = match self.users.lock() {
+                Ok(guard) => guard,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             users.retain(|u| u.id != id as i64);
             Ok(())
         }
     }
 
     #[tokio::test]
-    async fn user_service_create_get_delete() {
+    async fn user_service_create_get_delete() -> Result<(), Box<dyn std::error::Error>> {
         let repo = Arc::new(FakeUserRepo::new());
         let service = UserService::new(repo.clone());
 
         let dto = UserDtoCreate { username: "alice".into(), email: "alice@example.com".into() };
-        let resp = service.create_user(dto.clone()).await.expect("create failed");
+        let resp = service.create_user(dto.clone()).await?;
 
         assert_eq!(resp.user.username, dto.username);
-        let users = service.get_users().await.expect("get_users failed");
+        let users = service.get_users().await?;
         assert_eq!(users.len(), 1);
-        assert_eq!(users[0].username, dto.username);
+        let first = users.get(0).ok_or("expected one user but got none")?;
+        assert_eq!(first.username, dto.username);
 
-        service.delete_user(users[0].id as i32).await.expect("delete failed");
-        let users_after = service.get_users().await.expect("get_users failed");
+        service.delete_user(first.id as i32).await?;
+        let users_after = service.get_users().await?;
         assert!(users_after.is_empty());
+
+        Ok(())
     }
 }

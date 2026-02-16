@@ -54,16 +54,15 @@ impl SqlxURLRepository {
         let url = self
             .get_db_url_by_user_and_target_url(user_id, target_url.clone())
             .await;
-        if url.is_ok() {
-            let db_url = url.unwrap();
+        if let Ok(db_url) = url {
             debug!("URL already exists: {:?}", db_url);
             return Ok(map_url_to_dto(&db_url, self.config.clone()));
         }
+
         let secret_key = &self.get_generated_key().await?;
         debug!("Secret key: {}", secret_key.clone());
-        // secret_key is in the format "key_1234"
-        // `key` is the left-most segment (before the underscore)
-        let key = secret_key.split('_').collect::<Vec<&str>>()[0];
+        // secret_key is expected to be in the format "key_1234" — use splitn and a safe fallback
+        let key = secret_key.splitn(2, '_').next().unwrap_or(secret_key.as_str());
         let db_url = get_response_url_local(target_url, key, secret_key, user_id);
         let result_insert = sqlx::query_as::<_, URL>(
             "INSERT INTO urls (key, secret_key, target_url, is_active, clicks, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",

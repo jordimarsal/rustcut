@@ -61,10 +61,8 @@ pub async fn connect_to_db() -> Result<sqlx::SqlitePool, sqlx::Error> {
     .execute(&pool)
     .await?;
 
-    // Sembrar la base de dades amb dades inicials
-    seed_data(web::Data::new(pool.clone()))
-        .await
-        .expect("Failed to seed data");
+    // Sembrar la base de dades amb dades inicials (propaga l'error en lloc de `expect`)
+    seed_data(web::Data::new(pool.clone())).await?;
 
     Ok(pool)
 }

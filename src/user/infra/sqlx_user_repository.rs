@@ -84,7 +84,7 @@ mod tests {
         let users = repo.get_users().await?;
         assert!(users.iter().any(|u| u.username == dto.username));
 
-        let id = users.into_iter().find(|u| u.username == dto.username).unwrap().id as i32;
+        let id = users.into_iter().find(|u| u.username == dto.username).ok_or("created user not found")?.id as i32;
         repo.delete_user(id).await?;
         let users_after = repo.get_users().await?;
         assert!(users_after.iter().all(|u| u.id != id as i64));

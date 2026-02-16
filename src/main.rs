@@ -24,8 +24,12 @@ use std::sync::Arc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Inicialitza el sistema de logs
-    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
+    // Inicialitza el sistema de logs — si falla, inicialitzem un logger fallback i fem `log::error!`
+    if let Err(err) = log4rs::init_file("log4rs.yml", Default::default()) {
+        // intentar inicialitzar `env_logger` com a fallback (no fallarem si ja hi ha un logger)
+        let _ = env_logger::try_init();
+        log::error!("failed to initialize log4rs from log4rs.yml — using fallback logger: {}", err);
+    }
 
     // Carrega les variables d'entorn i els arguments de la línia de comandes
     let config = AppConfig::from_env_and_args();
@@ -33,8 +37,14 @@ async fn main() -> std::io::Result<()> {
     let base_url = config.base_url.clone();
     let protocol = config.protocol.clone();
 
-    // Estableix la connexió a la base de dades
-    let pool = connect_to_db().await.expect("Failed to connect to DB");
+    // Estableix la connexió a la base de dades — propaguem l'error amb `?` i registrem detalls
+    let pool = match connect_to_db().await {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Failed to connect to DB: {}", e);
+            return Err(std::io::Error::new(std::io::ErrorKind::Other, "database connection failed"));
+        }
+    };
 
     let user_repository: Arc<dyn UserRepositoryPort + Send + Sync> = Arc::new(
         SqlxUserRepository::new(pool.clone()).await,
