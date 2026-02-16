@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/jordimarsal/rustcut/branch/main/graph/badge.svg)](https://codecov.io/gh/jordimarsal/rustcut)
+
 # rustcut
 A tiny Rust URL shortener with Actix-Web and SQLite
 

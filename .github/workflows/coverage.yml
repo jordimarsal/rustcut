@@ -1,0 +1,45 @@
+name: coverage
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  coverage:
+    name: Run coverage and upload to Codecov
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rust-src, llvm-tools-preview
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Run tests and generate lcov
+        run: cargo llvm-cov --lcov --output-path coverage/lcov.info
+
+      - name: Upload lcov to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: rust
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
