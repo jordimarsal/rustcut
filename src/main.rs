@@ -54,7 +54,7 @@ async fn main() -> std::io::Result<()> {
     let user_service = UserService::new(user_repository.clone());
 
     let url_repository: Arc<dyn URLRepositoryPort + Send + Sync> = Arc::new(
-        SqlxURLRepository::new(pool.clone(), config.clone()).await,
+        SqlxURLRepository::new(pool.clone()).await,
     );
     let url_service = URLService::new(url_repository.clone());
 

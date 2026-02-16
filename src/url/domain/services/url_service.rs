@@ -1,4 +1,5 @@
-use crate::url::application::dtos::url_dto::{CustomError, URLBaseDto, URLInfoDto};
+use crate::url::application::dtos::url_dto::{CustomError, URLBaseDto};
+use crate::url::domain::models::schema::URL;
 use crate::url::domain::repositories::url_repository_port::URLRepositoryPort;
 
 use log::debug;
@@ -15,7 +16,8 @@ impl URLService {
         Self { url_repository }
     }
 
-    pub async fn create_url(&self, url_base: URLBaseDto) -> Result<URLInfoDto, CustomError> {
+    /// Create a URL and return the domain `URL` model. Mapping to DTO is done in application layer.
+    pub async fn create_url(&self, url_base: URLBaseDto) -> Result<URL, CustomError> {
         debug!("Creating URL");
         let user_id = self
             .url_repository
@@ -31,24 +33,22 @@ impl URLService {
                 eprintln!("Error occurred[create_url_srvc]: {}", err);
                 CustomError::new(500, "Error creating URL")
             });
-        match result {
-            Ok(url) => Ok(url),
-            Err(e) => Err(e),
-        }
+        result
     }
 
     pub async fn forward_to_target_url(&self, url_key: String) -> Result<String, Error> {
-        let target_url = self.url_repository.get_db_url_by_key(url_key.clone()).await?;
+        let url = self.url_repository.get_db_url_by_key(url_key.clone()).await?;
+        let target_url = url.target_url.clone();
         debug!("Forwarding to target URL: {}", target_url.clone());
         let _ = self.url_repository.increment_clicks(url_key.clone()).await?;
         Ok(target_url)
     }
 
-    pub async fn get_url_info(&self, url_key: String) -> Result<String, Error> {
+    pub async fn get_url_info(&self, url_key: String) -> Result<URL, Error> {
         self.url_repository.get_db_url_by_key(url_key).await
     }
 
-    pub async fn delete_url(&self, url_key: String) -> Result<String, Error> {
+    pub async fn delete_url(&self, url_key: String) -> Result<URL, Error> {
         self.url_repository.get_db_url_by_key(url_key).await
     }
 }

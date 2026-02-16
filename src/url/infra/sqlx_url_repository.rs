@@ -1,7 +1,4 @@
 use async_trait::async_trait;
-use crate::config::env::AppConfig;
-use crate::url::application::dtos::url_dto::{CustomError, URLInfoDto};
-use crate::url::application::mappers::mappers::map_url_to_dto;
 use crate::url::domain::models::schema::{GeneratedKey, URL};
 use crate::url::domain::repositories::url_repository_port::URLRepositoryPort;
 use log::debug;
@@ -16,7 +13,6 @@ use sqlx::Row;
 /// via the repository port trait.
 pub struct SqlxURLRepository {
     db_pool: SqlitePool,
-    config: AppConfig,
 } 
 
 impl SqlxURLRepository {
@@ -24,8 +20,8 @@ impl SqlxURLRepository {
     ///
     /// - `db_pool`: sqlx SQLite connection pool used for queries.
     /// - `config`: application configuration (used for DTO mapping).
-    pub async fn new(db_pool: SqlitePool, config: AppConfig) -> Self {
-        SqlxURLRepository { db_pool, config }
+    pub async fn new(db_pool: SqlitePool) -> Self {
+        SqlxURLRepository { db_pool }
     }
 
     /// Fetch the next available generated key from the `generated_keys` table.
@@ -48,7 +44,7 @@ impl SqlxURLRepository {
     /// - If the user already has the same target URL, return the existing URL DTO.
     /// - Otherwise obtain a generated secret key, insert the new URL row and related
     ///   auxiliary records, then return the mapped DTO.
-    pub async fn create_url(&self, target_url: String, user_id: i32) -> Result<URLInfoDto, sqlx::Error> {
+    pub async fn create_url(&self, target_url: String, user_id: i32) -> Result<URL, sqlx::Error> {
         debug!("Creating URL");
         // check if the user already has this target URL
         let url = self
@@ -56,7 +52,7 @@ impl SqlxURLRepository {
             .await;
         if let Ok(db_url) = url {
             debug!("URL already exists: {:?}", db_url);
-            return Ok(map_url_to_dto(&db_url, self.config.clone()));
+            return Ok(db_url);
         }
 
         let secret_key = &self.get_generated_key().await?;
@@ -112,13 +108,13 @@ impl SqlxURLRepository {
             })?;
             debug!("Key {} deleted", secret_key);
         }
-        let res = map_url_to_dto(&db_url, self.config.clone());
-        Ok(res)
+        // Return inserted domain model (application layer will map to DTO)
+        Ok(result_insert)
     }
 
     /// Return the target URL string for an active short `url_key`.
     /// Returns `sqlx::Error` if the key is not found or the query fails.
-    pub async fn get_db_url_by_key(&self, url_key: String) -> Result<String, sqlx::Error> {
+    pub async fn get_db_url_by_key(&self, url_key: String) -> Result<URL, sqlx::Error> {
         let result = sqlx::query_as::<_, URL>(
             "
             SELECT * FROM urls
@@ -129,7 +125,7 @@ impl SqlxURLRepository {
         .bind(url_key)
         .fetch_one(&self.db_pool)
         .await?;
-        Ok(result.target_url)
+        Ok(result)
     }
 
     /// Find an existing URL row for `user_id` that matches `target_url`.
@@ -166,7 +162,7 @@ impl SqlxURLRepository {
         .await
         .map_err(|err| {
             eprintln!("Error occurred[result_api_key]: {}", err);
-            CustomError::new(400, "No valid API_KEY");
+            ()
         })?;
 
         Ok(result_api_key.get("id"))
@@ -206,11 +202,11 @@ fn get_response_url_local(target_url: String, key: &str, secret_key: &String, us
 #[async_trait]
 /// `URLRepositoryPort` implementation that delegates to the SQLx-backed methods above.
 impl URLRepositoryPort for SqlxURLRepository {
-    async fn create_url(&self, target_url: String, user_id: i32) -> Result<URLInfoDto, sqlx::Error> {
+    async fn create_url(&self, target_url: String, user_id: i32) -> Result<URL, sqlx::Error> {
         self.create_url(target_url, user_id).await
     }
 
-    async fn get_db_url_by_key(&self, url_key: String) -> Result<String, sqlx::Error> {
+    async fn get_db_url_by_key(&self, url_key: String) -> Result<URL, sqlx::Error> {
         self.get_db_url_by_key(url_key).await
     }
 
