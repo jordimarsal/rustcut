@@ -1,5 +1,5 @@
 use crate::url::application::dtos::url_dto::{CustomError, URLBaseDto, URLInfoDto};
-use crate::url::domain::repositories::url_repository::URLRepository;
+use crate::url::domain::repositories::url_repository_port::URLRepositoryPort;
 
 use log::debug;
 use sqlx::Error;
@@ -7,11 +7,11 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct URLService {
-    url_repository: Arc<URLRepository>,
+    url_repository: Arc<dyn URLRepositoryPort + Send + Sync>,
 }
 
 impl URLService {
-    pub fn new(url_repository: Arc<URLRepository>) -> Self {
+    pub fn new(url_repository: Arc<dyn URLRepositoryPort + Send + Sync>) -> Self {
         Self { url_repository }
     }
 

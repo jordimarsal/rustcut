@@ -1,16 +1,16 @@
 use crate::shared::utils::create_api_key;
 use crate::user::application::dtos::user_dto::{UserDto, UserDtoCreate, UserDtoCreateResponse};
-use crate::user::domain::repositories::user_repository::UserRepository;
+use crate::user::domain::repositories::user_repository_port::UserRepositoryPort;
 use sqlx::Error;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct UserService {
-    user_repository: Arc<UserRepository>,
+    user_repository: Arc<dyn UserRepositoryPort + Send + Sync>,
 }
 
 impl UserService {
-    pub fn new(user_repository: Arc<UserRepository>) -> Self {
+    pub fn new(user_repository: Arc<dyn UserRepositoryPort + Send + Sync>) -> Self {
         Self { user_repository }
     }
 

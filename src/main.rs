@@ -12,10 +12,12 @@ use crate::config::env::AppConfig;
 use crate::url::application::controllers::url_controller::{
     create_url, delete_url, forward_to_target_url, get_url_info,
 };
-use crate::url::domain::repositories::url_repository::URLRepository;
+use crate::url::infra::sqlx_url_repository::SqlxURLRepository;
+use crate::url::domain::repositories::url_repository_port::URLRepositoryPort;
 use crate::url::domain::services::url_service::URLService;
 use crate::user::application::controllers::user_controller::{create_user, delete_user, get_users};
-use crate::user::domain::repositories::user_repository::UserRepository;
+use crate::user::infra::sqlx_user_repository::SqlxUserRepository;
+use crate::user::domain::repositories::user_repository_port::UserRepositoryPort;
 use crate::user::domain::services::user_service::UserService;
 
 use std::sync::Arc;
@@ -34,12 +36,16 @@ async fn main() -> std::io::Result<()> {
     // Estableix la connexió a la base de dades
     let pool = connect_to_db().await.expect("Failed to connect to DB");
 
-    let user_repository = Arc::new(UserRepository::new(pool.clone()).await);
+    let user_repository: Arc<dyn UserRepositoryPort + Send + Sync> = Arc::new(
+        SqlxUserRepository::new(pool.clone()).await,
+    );
 
-    // Crear una nova instància de UserService amb UserRepository
+    // Crear una nova instància de UserService amb UserRepositoryPort
     let user_service = UserService::new(user_repository.clone());
 
-    let url_repository = Arc::new(URLRepository::new(pool.clone(), config.clone()).await);
+    let url_repository: Arc<dyn URLRepositoryPort + Send + Sync> = Arc::new(
+        SqlxURLRepository::new(pool.clone(), config.clone()).await,
+    );
     let url_service = URLService::new(url_repository.clone());
 
     info!("Server up in {protocol}://{base_url}:{server_port}");
