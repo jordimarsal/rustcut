@@ -107,8 +107,6 @@ The app reads `.env` in normal runs (not during `cargo test`). The logger is con
 - Application layer implements controllers, DTOs and mappers.
 - Design priorities: testability, separation of concerns, and the ability to swap persistence implementations.
 
-For a detailed architecture review see `docs/code-review-ddd-hexagonal-solid.md`.
-
 ## Contributing
 - Fork → branch → PR
 - Add tests for new behavior
