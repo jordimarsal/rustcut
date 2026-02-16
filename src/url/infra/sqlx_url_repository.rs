@@ -222,3 +222,85 @@ impl URLRepositoryPort for SqlxURLRepository {
         self.increment_clicks(url_key).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+    use sqlx::Executor;
+
+    #[tokio::test]
+    async fn sqlx_url_repository_create_get_and_increment() -> Result<(), Box<dyn std::error::Error>> {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect(":memory:").await?;
+
+        // Create minimal schema required by the repository
+        pool.execute(r#"
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL,
+                email TEXT NOT NULL,
+                api_key TEXT NOT NULL
+            );
+            CREATE TABLE urls (
+                id INTEGER PRIMARY KEY,
+                key TEXT NOT NULL,
+                secret_key TEXT NOT NULL,
+                target_url TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL,
+                clicks INTEGER NOT NULL,
+                user_id INTEGER NOT NULL
+            );
+            CREATE TABLE generated_keys (
+                key_value TEXT PRIMARY KEY
+            );
+            CREATE TABLE used_keys (
+                id INTEGER PRIMARY KEY,
+                key_value VARCHAR(50),
+                user_id INTEGER
+            );
+        "#).await?;
+
+        // Insert a generated key that will be consumed by create_url
+        pool.execute("INSERT INTO generated_keys (key_value) VALUES ('key_ABC')").await?;
+
+        let repo = SqlxURLRepository::new(pool.clone()).await;
+
+        let created = repo.create_url("http://ex".into(), 1).await?;
+        assert_eq!(created.target_url, "http://ex");
+
+        let fetched = repo.get_db_url_by_key(created.key.clone()).await?;
+        assert_eq!(fetched.key, created.key);
+
+        repo.increment_clicks(created.key.clone()).await?;
+        let fetched2 = repo.get_db_url_by_key(created.key.clone()).await?;
+        assert_eq!(fetched2.clicks, 1);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_url_returns_existing_if_present() -> Result<(), Box<dyn std::error::Error>> {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect(":memory:").await?;
+        pool.execute(r#"CREATE TABLE urls (id INTEGER PRIMARY KEY, key TEXT NOT NULL, secret_key TEXT NOT NULL, target_url TEXT NOT NULL, is_active BOOLEAN NOT NULL, clicks INTEGER NOT NULL, user_id INTEGER NOT NULL);"#).await?;
+        pool.execute("INSERT INTO urls (key, secret_key, target_url, is_active, clicks, user_id) VALUES ('K1','SK1','http://same',1,0,1)").await?;
+        let repo = SqlxURLRepository::new(pool.clone()).await;
+
+        let res = repo.create_url("http://same".into(), 1).await?;
+        assert_eq!(res.key, "K1");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn create_url_errors_when_no_generated_key() -> Result<(), Box<dyn std::error::Error>> {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect(":memory:").await?;
+        pool.execute(r#"CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, api_key TEXT NOT NULL); CREATE TABLE urls (id INTEGER PRIMARY KEY, key TEXT NOT NULL, secret_key TEXT NOT NULL, target_url TEXT NOT NULL, is_active BOOLEAN NOT NULL, clicks INTEGER NOT NULL, user_id INTEGER NOT NULL); CREATE TABLE generated_keys (key_value TEXT PRIMARY KEY); CREATE TABLE used_keys (id INTEGER PRIMARY KEY, key_value VARCHAR(50), user_id INTEGER);"#).await?;
+        let repo = SqlxURLRepository::new(pool.clone()).await;
+
+        let err = repo.create_url("http://no-key".into(), 1).await.expect_err("expected error when no generated key");
+        match err {
+            sqlx::Error::RowNotFound => Ok(()),
+            _ => Ok(()),
+        }
+    }
+}
+
