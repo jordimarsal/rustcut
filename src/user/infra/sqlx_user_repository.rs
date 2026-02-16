@@ -55,3 +55,40 @@ impl UserRepositoryPort for SqlxUserRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::user::application::dtos::user_dto::UserDtoCreate;
+    use sqlx::sqlite::SqlitePoolOptions;
+    use sqlx::Executor;
+
+    #[tokio::test]
+    async fn create_get_and_delete_user_integration() -> Result<(), Box<dyn std::error::Error>> {
+        let pool = SqlitePoolOptions::new().max_connections(1).connect(":memory:").await?;
+
+        pool.execute(r#"
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL,
+                email TEXT NOT NULL,
+                api_key TEXT NOT NULL
+            );
+        "#).await?;
+
+        let repo = SqlxUserRepository::new(pool.clone()).await;
+        let dto = UserDtoCreate { username: "bob".to_string(), email: "bob@example.com".to_string() };
+        let resp = repo.create_user(dto.clone(), "apikey-integ".to_string()).await?;
+        assert_eq!(resp.user.username, dto.username);
+
+        let users = repo.get_users().await?;
+        assert!(users.iter().any(|u| u.username == dto.username));
+
+        let id = users.into_iter().find(|u| u.username == dto.username).unwrap().id as i32;
+        repo.delete_user(id).await?;
+        let users_after = repo.get_users().await?;
+        assert!(users_after.iter().all(|u| u.id != id as i64));
+
+        Ok(())
+    }
+}
